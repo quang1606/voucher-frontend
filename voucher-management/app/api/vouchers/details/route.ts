@@ -2,12 +2,11 @@ import { NextResponse } from "next/server";
 import { getBackendApiWithRequestAuth } from "@/lib/backend-api";
 import { VOUCHER_ENDPOINTS } from "@/lib/api/endpoints";
 
-export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request) {
   try {
-    const { id } = await params;
-    const body = await req.json();
+    const params = Object.fromEntries(new URL(req.url).searchParams);
     const api = getBackendApiWithRequestAuth(req.headers.get("authorization"));
-    const res = await api.put(VOUCHER_ENDPOINTS.CONFIRM(id), body);
+    const res = await api.get(VOUCHER_ENDPOINTS.DETAILS, { params });
     return NextResponse.json(res.data);
   } catch (e: unknown) {
     const err = e as { response?: { data?: { message?: string }; status?: number } };

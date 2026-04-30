@@ -1,11 +1,25 @@
 export const VOUCHER_ENDPOINTS = {
   LIST: "/api/v1/vouchers",
   CREATE: "/api/v1/vouchers",
+  DETAILS: "/api/v1/vouchers/details",
   EXCEL: "/api/v1/vouchers/excel",
   DETAIL: (id: string) => `/api/v1/vouchers/${id}`,
   SUBMIT: (id: string) => `/api/v1/vouchers/${id}/submit`,
   CONFIRM: (id: string) => `/api/v1/vouchers/${id}/confirm`,
   CANCEL: (id: string) => `/api/v1/vouchers/${id}/cancel`,
+};
+
+export const MISSION_ENDPOINTS = {
+  CREATE: "/api/v1/missions/missions",
+  SEARCH: "/api/v1/missions/search",
+  DETAIL: (id: string) => `/api/v1/missions/missions/${id}`,
+  SUBMIT: (id: string) => `/api/v1/missions/missions/${id}/submit`,
+  CONFIRM: (id: string) => `/api/v1/missions/missions/${id}/confirm`,
+  CANCEL: (id: string) => `/api/v1/missions/missions/${id}/cancel`,
+};
+
+export const AUDIT_LOG_ENDPOINTS = {
+  LIST: "/api/v1/audit-logs",
 };
 
 export const CAMPAIGN_ENDPOINTS = {

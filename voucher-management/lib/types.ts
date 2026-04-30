@@ -2,17 +2,69 @@ export interface Voucher {
   id: number;
   requestId: string;
   requestMode: "SINGLE" | "EXCEL";
-  creatorType: "SYSTEM" | "MERCHANT";
+  creatorType: "PARTNER" | "SYSTEM";
   voucherPurpose: "REWARD" | "HUNT";
   fileName: string | null;
-  status: "DRAFT" | "CANCELLED" | "PENDING_APPROVE" | "INIT" | "APPROVED" | "REJECTED" | "PROCESSING" | "FAILED" | "FINISH" | "SUCCESS";
+  status: "DRAFT" | "CANCELLED" | "PENDING_APPROVE" | "INIT" | "APPROVED" | "REJECTED" | "FAILED" | "FINISHED";
   reason: string | null;
+  totalVoucher: number;
+  statusCounts?: { requestStatus: string; count: number }[];
   createdTime: string;
   createdBy: string;
   updatedTime: string;
   updatedBy: string | null;
   confirmedTime: string | null;
   confirmedBy: string | null;
+  storeName?: string;
+}
+
+export interface VoucherDetail {
+  id: number;
+  voucherCode: string;
+  requestId: string;
+  voucherName: string;
+  description: string;
+  customerTier: string;
+  discountType: "FIXED" | "PERCENT";
+  discountValue: number;
+  maxDiscount: number;
+  minOrderValue: number;
+  totalStock: number;
+  availableStock: number;
+  requestStatus: string;
+  maxCollect: number;
+  startDate: string;
+  endDate: string;
+  status: "ACTIVE" | "INACTIVE" | "EXPIRED";
+  errorMessage: string | null;
+  createdAt: string;
+}
+
+export interface Mission {
+  missionId: number;
+  requestId: string;
+  missionName: string;
+  missionDescription: string;
+  targetValue: number;
+  rewardType: "POINT" | "VOUCHER";
+  rewardValue: string;
+  partnerId: number | null;
+  startDate: string;
+  endDate: string;
+  status: "CANCELLED" | "PENDING_APPROVE" | "INIT" | "APPROVED" | "REJECTED" | "FAILED" | "FINISH";
+  createdDate?: string;
+  updatedDate?: string;
+}
+
+export interface AuditLog {
+  id: number;
+  userId: string;
+  userRole: string;
+  action: string;
+  resource: string;
+  success: boolean;
+  errorMessage: string | null;
+  createdAt: string;
 }
 
 export interface Campaign {

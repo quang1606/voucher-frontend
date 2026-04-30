@@ -86,7 +86,7 @@ export default function PartnersPage() {
         email: form.email || undefined,
         firstName: form.firstName || undefined,
         lastName: form.lastName || undefined,
-        role: "MERCHANT",
+        role: "PARTNER",
         storeName: form.storeName,
         phone: form.phone || undefined,
         category: form.category,

@@ -35,7 +35,10 @@ export async function POST(req: Request) {
       body: forwardForm,
     });
 
-    const data = await res.json();
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); } catch { data = { message: text || "Upload completed" }; }
+
     if (!res.ok) {
       console.log("[VOUCHER-EXCEL] BE error:", res.status, data);
       return NextResponse.json(data, { status: res.status });
