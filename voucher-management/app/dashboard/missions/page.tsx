@@ -28,6 +28,7 @@ import { Pagination } from "@/components/ui/pagination";
 import { AuthGuard } from "@/components/auth-guard";
 import { missionService } from "@/lib/api/services/missionService";
 import { useToast } from "@/hooks/use-toast";
+import { useRoles } from "@/hooks/use-roles";
 import { formatDateTime } from "@/lib/utils";
 import type { Mission } from "@/lib/types";
 
@@ -62,6 +63,14 @@ const REWARD_TYPE_OPTIONS = [
   { value: "VOUCHER", label: "Voucher" },
 ];
 
+const MISSION_STATUS_OPTIONS = [
+  { value: "all", label: "Tất cả trạng thái mission" },
+  { value: "INACTIVE", label: "Chưa kích hoạt" },
+  { value: "ACTIVE", label: "Đang hoạt động" },
+  { value: "EXPIRED", label: "Hết hạn" },
+  { value: "APPROVED", label: "Đã duyệt" },
+];
+
 /* ========================================================================= */
 /*  Create form                                                              */
 /* ========================================================================= */
@@ -69,6 +78,7 @@ const REWARD_TYPE_OPTIONS = [
 interface CreateForm {
   missionName: string;
   missionDescription: string;
+  targetType: string;
   targetValue: string;
   rewardType: string;
   rewardValue: string;
@@ -89,7 +99,7 @@ interface CreateForm {
 }
 
 const defaultForm: CreateForm = {
-  missionName: "", missionDescription: "", targetValue: "",
+  missionName: "", missionDescription: "", targetType: "COUNT", targetValue: "",
   rewardType: "POINT", rewardValue: "", partnerId: "",
   missionStartDate: "", missionEndDate: "",
   voucherName: "", voucherDescription: "", discountType: "FIXED",
@@ -134,6 +144,7 @@ function SelectFilter({
 
 export default function MissionsPage() {
   const { toast } = useToast();
+  const { isPartner } = useRoles();
 
   // --- List state ---
   const [missions, setMissions] = useState<Mission[]>([]);
@@ -141,7 +152,7 @@ export default function MissionsPage() {
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [filters, setFilters] = useState({
-    nameStore: "", rewardType: "all", taskStatus: "all",
+    nameStore: "", rewardType: "all", taskStatus: "all", missionStatus: "all",
   });
 
   // --- Shared state ---
@@ -173,6 +184,7 @@ export default function MissionsPage() {
       if (filters.nameStore) params.nameStore = filters.nameStore;
       if (filters.rewardType !== "all") params.rewardType = filters.rewardType;
       if (filters.taskStatus !== "all") params.taskStatus = filters.taskStatus;
+      if (filters.missionStatus !== "all") params.missionStatus = filters.missionStatus;
       const res = await missionService.search(params);
       // Response: { data: { data: [...], totalElements, totalPages, page, size } }
       // or { status, code, data: { data: [...] } }
@@ -195,26 +207,27 @@ export default function MissionsPage() {
     setSaving(true);
     try {
       const body: Record<string, unknown> = {
+        // Mission fields
         missionName: form.missionName,
         missionDescription: form.missionDescription,
+        targetType: form.targetType,
         targetValue: Number(form.targetValue),
         rewardType: form.rewardType,
-        rewardValue: form.rewardValue,
+        rewardValue: form.rewardValue || null,
         missionStartDate: form.missionStartDate,
         missionEndDate: form.missionEndDate,
+        // Voucher fields (BE: CreateVoucherRequest)
+        voucherName: form.voucherName || form.missionName,
+        description: form.voucherDescription || form.missionDescription,
+        discountType: form.discountType,
+        discountValue: form.discountValue ? Number(form.discountValue) : null,
+        maxDiscount: form.maxDiscount ? Number(form.maxDiscount) : null,
+        minOrderValue: form.minOrderValue ? Number(form.minOrderValue) : null,
+        totalStock: form.totalStock ? Number(form.totalStock) : null,
+        maxCollect: form.maxCollect ? Number(form.maxCollect) : 1,
+        startDate: form.voucherStartDate || form.missionStartDate,
+        endDate: form.voucherEndDate || form.missionEndDate,
       };
-      if (form.rewardType === "VOUCHER") {
-        body.voucherName = form.voucherName;
-        body.voucherDescription = form.voucherDescription;
-        body.discountType = form.discountType;
-        body.discountValue = Number(form.discountValue);
-        body.maxDiscount = form.maxDiscount ? Number(form.maxDiscount) : null;
-        body.minOrderValue = form.minOrderValue ? Number(form.minOrderValue) : null;
-        body.totalStock = Number(form.totalStock);
-        body.maxCollect = form.maxCollect ? Number(form.maxCollect) : null;
-        body.voucherStartDate = form.voucherStartDate;
-        body.voucherEndDate = form.voucherEndDate;
-      }
       await missionService.create(body);
       toast({ title: "Thành công", description: "Đã tạo mission" });
       setCreateOpen(false);
@@ -282,12 +295,12 @@ export default function MissionsPage() {
   };
 
   const clearFilters = () => {
-    setFilters({ nameStore: "", rewardType: "all", taskStatus: "all" });
+    setFilters({ nameStore: "", rewardType: "all", taskStatus: "all", missionStatus: "all" });
     setPage(0);
     setSearchTrigger((p) => p + 1);
   };
 
-  const hasFilters = filters.nameStore !== "" || filters.rewardType !== "all" || filters.taskStatus !== "all";
+  const hasFilters = filters.nameStore !== "" || filters.rewardType !== "all" || filters.taskStatus !== "all" || filters.missionStatus !== "all";
 
   /* ----------------------------------------------------------------------- */
   /*  Render                                                                 */
@@ -324,6 +337,12 @@ export default function MissionsPage() {
             value={filters.taskStatus}
             onChange={(v) => setFilters((p) => ({ ...p, taskStatus: v }))}
             options={STATUS_OPTIONS}
+          />
+          <SelectFilter
+            label="Trạng thái Mission"
+            value={filters.missionStatus}
+            onChange={(v) => setFilters((p) => ({ ...p, missionStatus: v }))}
+            options={MISSION_STATUS_OPTIONS}
           />
           <Button size="sm" onClick={() => { setPage(0); setSearchTrigger((p) => p + 1); }}><Search className="mr-2 h-4 w-4" />Tìm kiếm</Button>
           {hasFilters && (
@@ -398,7 +417,7 @@ export default function MissionsPage() {
                         </Button>
                       </>
                     )}
-                    {m.status === "PENDING_APPROVE" && (
+                    {m.status === "PENDING_APPROVE" && !isPartner && (
                       <>
                         <Button variant="ghost" size="icon" onClick={() => openAction(m, "approve")} title="Duyệt">
                           <CheckCircle className="h-4 w-4 text-green-600" />
@@ -445,14 +464,26 @@ export default function MissionsPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label>{form.rewardType === "POINT" ? "Mục tiêu (số lần) *" : "Mục tiêu (VNĐ) *"}</Label>
+                  <Label>Loại mục tiêu *</Label>
+                  <Select value={form.targetType} onValueChange={(v) => setForm((p) => ({ ...p, targetType: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="COUNT">Số lần</SelectItem>
+                      <SelectItem value="AMOUNT">Số tiền (VNĐ)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label>{form.targetType === "COUNT" ? "Mục tiêu (số lần) *" : "Mục tiêu (VNĐ) *"}</Label>
                   <Input
                     type="number"
                     value={form.targetValue}
                     onChange={(e) => setForm((p) => ({ ...p, targetValue: e.target.value }))}
-                    placeholder={form.rewardType === "POINT" ? "VD: 5" : "VD: 100000"}
+                    placeholder={form.targetType === "COUNT" ? "VD: 5" : "VD: 100000"}
                   />
                 </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label>Loại thưởng *</Label>
                   <Select value={form.rewardType} onValueChange={(v) => setForm((p) => ({ ...p, rewardType: v }))}>
@@ -567,17 +598,6 @@ export default function MissionsPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
-                      <Label>Giới hạn thu thập/người</Label>
-                      <Input
-                        type="number"
-                        value={form.maxCollect}
-                        onChange={(e) => setForm((p) => ({ ...p, maxCollect: e.target.value }))}
-                      />
-                    </div>
-                    <div />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="grid gap-2">
                       <Label>Voucher bắt đầu *</Label>
                       <Input
                         type="datetime-local"
@@ -688,57 +708,70 @@ export default function MissionsPage() {
                 </div>
 
                 {/* Voucher detail section */}
-                {detailMission.rewardType === "VOUCHER" && (
+                {detailMission.voucherDetail && (
                   <>
                     <div className="border-t pt-4 mt-2">
                       <Label className="text-base font-semibold">Thông tin Voucher</Label>
                     </div>
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                      <div>
-                        <Label className="text-xs text-muted-foreground">Tên voucher</Label>
-                        <p className="text-sm">{String((detailMission as Record<string, unknown>).voucherName || "—")}</p>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-muted-foreground">Loại giảm giá</Label>
-                        <p className="text-sm">
-                          <Badge variant="outline">
-                            {(detailMission as Record<string, unknown>).discountType === "FIXED" ? "Cố định" : (detailMission as Record<string, unknown>).discountType === "PERCENT" ? "Phần trăm" : String((detailMission as Record<string, unknown>).discountType || "—")}
-                          </Badge>
-                        </p>
-                      </div>
-                      <div className="col-span-2">
-                        <Label className="text-xs text-muted-foreground">Mô tả voucher</Label>
-                        <p className="text-sm">{String((detailMission as Record<string, unknown>).voucherDescription || (detailMission as Record<string, unknown>).description || "—")}</p>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-muted-foreground">Giá trị giảm</Label>
-                        <p className="text-sm">{(detailMission as Record<string, unknown>).discountValue != null ? formatNumber(Number((detailMission as Record<string, unknown>).discountValue)) : "—"}</p>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-muted-foreground">Giảm tối đa</Label>
-                        <p className="text-sm">{(detailMission as Record<string, unknown>).maxDiscount != null ? formatNumber(Number((detailMission as Record<string, unknown>).maxDiscount)) : "—"}</p>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-muted-foreground">Đơn tối thiểu</Label>
-                        <p className="text-sm">{(detailMission as Record<string, unknown>).minOrderValue != null ? formatNumber(Number((detailMission as Record<string, unknown>).minOrderValue)) : "—"}</p>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-muted-foreground">Tổng số lượng</Label>
-                        <p className="text-sm">{(detailMission as Record<string, unknown>).totalStock != null ? formatNumber(Number((detailMission as Record<string, unknown>).totalStock)) : "—"}</p>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-muted-foreground">Giới hạn/người</Label>
-                        <p className="text-sm">{(detailMission as Record<string, unknown>).maxCollect != null ? String((detailMission as Record<string, unknown>).maxCollect) : "—"}</p>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-muted-foreground">Voucher bắt đầu</Label>
-                        <p className="text-sm">{(detailMission as Record<string, unknown>).voucherStartDate ? formatDateTime(String((detailMission as Record<string, unknown>).voucherStartDate)) : (detailMission as Record<string, unknown>).startDate ? formatDateTime(String((detailMission as Record<string, unknown>).startDate)) : "—"}</p>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-muted-foreground">Voucher kết thúc</Label>
-                        <p className="text-sm">{(detailMission as Record<string, unknown>).voucherEndDate ? formatDateTime(String((detailMission as Record<string, unknown>).voucherEndDate)) : (detailMission as Record<string, unknown>).endDate ? formatDateTime(String((detailMission as Record<string, unknown>).endDate)) : "—"}</p>
-                      </div>
-                    </div>
+                    {(() => {
+                      const vd = detailMission.voucherDetail as Record<string, unknown>;
+                      return (
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Mã voucher</Label>
+                            <p className="text-sm font-mono">{String(vd.voucherCode || "—")}</p>
+                          </div>
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Tên voucher</Label>
+                            <p className="text-sm">{String(vd.voucherName || "—")}</p>
+                          </div>
+                          <div className="col-span-2">
+                            <Label className="text-xs text-muted-foreground">Mô tả</Label>
+                            <p className="text-sm">{String(vd.description || "—")}</p>
+                          </div>
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Loại giảm giá</Label>
+                            <p className="text-sm"><Badge variant="outline">{vd.discountType === "FIXED" ? "Cố định" : "Phần trăm"}</Badge></p>
+                          </div>
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Giá trị giảm</Label>
+                            <p className="text-sm">{vd.discountValue != null ? formatNumber(Number(vd.discountValue)) + (vd.discountType === "PERCENT" ? "%" : "đ") : "—"}</p>
+                          </div>
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Giảm tối đa</Label>
+                            <p className="text-sm">{vd.maxDiscount != null ? formatNumber(Number(vd.maxDiscount)) + "đ" : "—"}</p>
+                          </div>
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Đơn tối thiểu</Label>
+                            <p className="text-sm">{vd.minOrderValue != null ? formatNumber(Number(vd.minOrderValue)) + "đ" : "—"}</p>
+                          </div>
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Tồn kho</Label>
+                            <p className="text-sm">{vd.availableStock != null ? `${vd.availableStock}/${vd.totalStock}` : "—"}</p>
+                          </div>
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Giới hạn/người</Label>
+                            <p className="text-sm">{vd.maxCollect != null ? String(vd.maxCollect) : "—"}</p>
+                          </div>
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Trạng thái</Label>
+                            <p className="text-sm"><Badge variant={vd.status === "ACTIVE" ? "default" : "secondary"}>{String(vd.status || "—")}</Badge></p>
+                          </div>
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Request Status</Label>
+                            <p className="text-sm"><Badge variant="outline">{String(vd.requestStatus || "—")}</Badge></p>
+                          </div>
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Voucher bắt đầu</Label>
+                            <p className="text-sm">{vd.startDate ? formatDateTime(String(vd.startDate)) : "—"}</p>
+                          </div>
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Voucher kết thúc</Label>
+                            <p className="text-sm">{vd.endDate ? formatDateTime(String(vd.endDate)) : "—"}</p>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </>
                 )}
               </div>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Ticket, Megaphone, Users, BarChart3, Settings, Target, ClipboardList } from "lucide-react";
+import { LayoutDashboard, Ticket, Megaphone, Users, BarChart3, Settings, Target, ClipboardList, Receipt } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/lib/auth";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -15,6 +15,7 @@ const navItems: NavItem[] = [
   { title: "Missions", href: "/dashboard/missions", icon: Target, pageKey: "missions" },
   { title: "Partners", href: "/dashboard/partners", icon: Users, pageKey: "partners" },
   { title: "Audit Logs", href: "/dashboard/audit-logs", icon: ClipboardList, pageKey: "audit-logs" },
+  { title: "Invoices", href: "/dashboard/invoices", icon: Receipt, pageKey: "invoices" },
   { title: "Reports", href: "/dashboard/reports", icon: BarChart3, pageKey: "reports" },
   { title: "Settings", href: "/dashboard/settings", icon: Settings, pageKey: "settings" },
 ];

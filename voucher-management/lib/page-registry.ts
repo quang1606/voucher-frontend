@@ -7,8 +7,10 @@ export interface PageRegistryItem {
 export const PAGE_REGISTRY: PageRegistryItem[] = [
   { key: "dashboard", label: "Dashboard", description: "Tổng quan hệ thống" },
   { key: "vouchers", label: "Vouchers", description: "Quản lý voucher" },
-  { key: "campaigns", label: "Campaigns", description: "Quản lý chiến dịch" },
+  { key: "missions", label: "Missions", description: "Quản lý mission" },
   { key: "partners", label: "Partners", description: "Quản lý đối tác" },
+  { key: "audit-logs", label: "Audit Logs", description: "Lịch sử hoạt động" },
+  { key: "invoices", label: "Invoices", description: "Quản lý hóa đơn giả lập" },
   { key: "reports", label: "Reports", description: "Báo cáo thống kê" },
   { key: "settings", label: "Settings", description: "Cài đặt hệ thống" },
 ];

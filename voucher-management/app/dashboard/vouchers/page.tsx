@@ -31,6 +31,7 @@ import { Pagination } from "@/components/ui/pagination";
 import { AuthGuard } from "@/components/auth-guard";
 import { voucherService } from "@/lib/api/services/voucherService";
 import { useToast } from "@/hooks/use-toast";
+import { useRoles } from "@/hooks/use-roles";
 import { formatDateTime } from "@/lib/utils";
 import type { Voucher, VoucherDetail } from "@/lib/types";
 
@@ -53,6 +54,18 @@ const VOUCHER_STATUS_MAP: Record<string, { label: string; variant: "default" | "
   ACTIVE: { label: "Hoạt động", variant: "default" },
   INACTIVE: { label: "Ngừng", variant: "secondary" },
   EXPIRED: { label: "Hết hạn", variant: "destructive" },
+};
+
+const STATUS_COUNT_MAP: Record<string, { variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  INIT: { variant: "secondary" },
+  PENDING_APPROVE: { variant: "outline" },
+  APPROVED: { variant: "default" },
+  SUCCESS: { variant: "default" },
+  REJECTED: { variant: "destructive" },
+  FAILED: { variant: "destructive" },
+  CANCELLED: { variant: "destructive" },
+  FINISHED: { variant: "default" },
+  DRAFT: { variant: "secondary" },
 };
 
 const STATUS_OPTIONS = [
@@ -96,6 +109,7 @@ const DETAIL_STATUS_OPTIONS = [
   { value: "ACTIVE", label: "Hoạt động" },
   { value: "INACTIVE", label: "Ngừng" },
   { value: "EXPIRED", label: "Hết hạn" },
+  { value: "APPROVED", label: "Đã duyệt" },
 ];
 
 const CUSTOMER_TIER_OPTIONS = [
@@ -179,6 +193,7 @@ function SelectFilter({
 
 export default function VouchersPage() {
   const { toast } = useToast();
+  const { isPartner } = useRoles();
   const [activeTab, setActiveTab] = useState("requests");
 
   // --- Tab 1: Voucher Requests state ---
@@ -220,6 +235,16 @@ export default function VouchersPage() {
   const [actionVoucher, setActionVoucher] = useState<Voucher | null>(null);
   const [actionType, setActionType] = useState<"submit" | "approve" | "reject" | "cancel" | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+
+  // Request detail dialog
+  const [reqDetailOpen, setReqDetailOpen] = useState(false);
+  const [reqDetailLoading, setReqDetailLoading] = useState(false);
+  const [reqDetailData, setReqDetailData] = useState<Record<string, unknown> | null>(null);
+  const [reqDetailVouchers, setReqDetailVouchers] = useState<VoucherDetail[]>([]);
+
+  // Voucher detail dialog
+  const [voucherDetailOpen, setVoucherDetailOpen] = useState(false);
+  const [selectedVoucherDetail, setSelectedVoucherDetail] = useState<VoucherDetail | null>(null);
 
   /* ----------------------------------------------------------------------- */
   /*  Data fetching                                                          */
@@ -283,8 +308,7 @@ export default function VouchersPage() {
       const body: Record<string, unknown> = {
         voucherName: form.voucherName,
         description: form.description,
-        voucherPurpose: form.voucherPurpose,
-        customerTier: form.customerTier,
+        customerTier: isPartner ? undefined : form.customerTier,
         discountType: form.discountType,
         discountValue: Number(form.discountValue),
         totalStock: Number(form.totalStock),
@@ -363,6 +387,28 @@ export default function VouchersPage() {
     setRejectReason("");
   };
 
+  // View request detail
+  const handleViewRequest = async (v: Voucher) => {
+    setReqDetailOpen(true);
+    setReqDetailLoading(true);
+    setReqDetailData(v as unknown as Record<string, unknown>);
+    setReqDetailVouchers([]);
+    try {
+      const res = await voucherService.getById(String(v.id));
+      const payload = res?.data || res;
+      // payload may have voucherDetailResponses or nested data
+      const details = payload.voucherDetailResponses || payload.data || [];
+      setReqDetailVouchers(Array.isArray(details) ? details : []);
+    } catch { /* keep empty */ }
+    setReqDetailLoading(false);
+  };
+
+  // View voucher detail
+  const handleViewVoucherDetail = (d: VoucherDetail) => {
+    setSelectedVoucherDetail(d);
+    setVoucherDetailOpen(true);
+  };
+
   const clearReqFilters = () => {
     setReqFilters({ status: "all", requestMode: "all", creatorType: "all", voucherPurpose: "all", storeName: "", fromDate: "", toDate: "" });
     setReqPage(0);
@@ -405,12 +451,11 @@ export default function VouchersPage() {
             <div className="flex flex-wrap gap-3 items-end">
               <SelectFilter label="Trạng thái" value={reqFilters.status} onChange={(v) => setReqFilters((p) => ({ ...p, status: v }))} options={STATUS_OPTIONS} />
               <SelectFilter label="Loại" value={reqFilters.requestMode} onChange={(v) => setReqFilters((p) => ({ ...p, requestMode: v }))} options={REQUEST_MODE_OPTIONS} />
-              <SelectFilter label="Nguồn" value={reqFilters.creatorType} onChange={(v) => setReqFilters((p) => ({ ...p, creatorType: v }))} options={CREATOR_TYPE_OPTIONS} />
-              <SelectFilter label="Mục đích" value={reqFilters.voucherPurpose} onChange={(v) => setReqFilters((p) => ({ ...p, voucherPurpose: v }))} options={VOUCHER_PURPOSE_OPTIONS} />
-              <div className="grid gap-1">
+              {!isPartner && <SelectFilter label="Nguồn" value={reqFilters.creatorType} onChange={(v) => setReqFilters((p) => ({ ...p, creatorType: v }))} options={CREATOR_TYPE_OPTIONS} />}
+              {!isPartner && <div className="grid gap-1">
                 <Label className="text-xs text-muted-foreground">Cửa hàng</Label>
                 <Input className="w-40" placeholder="Tên cửa hàng" value={reqFilters.storeName} onChange={(e) => setReqFilters((p) => ({ ...p, storeName: e.target.value }))} />
-              </div>
+              </div>}
               <div className="grid gap-1">
                 <Label className="text-xs text-muted-foreground">Từ ngày</Label>
                 <Input type="date" className="w-40" value={reqFilters.fromDate} onChange={(e) => setReqFilters((p) => ({ ...p, fromDate: e.target.value }))} />
@@ -458,7 +503,7 @@ export default function VouchersPage() {
                   </TableRow>
                 ) : (
                   vouchers.map((v) => (
-                    <TableRow key={v.id}>
+                    <TableRow key={v.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleViewRequest(v)}>
                       <TableCell className="font-mono text-sm">{v.requestId}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{v.requestMode === "SINGLE" ? "Đơn lẻ" : "Excel"}</Badge>
@@ -469,13 +514,24 @@ export default function VouchersPage() {
                           {STATUS_MAP[v.status]?.label || v.status}
                         </Badge>
                       </TableCell>
-                      <TableCell>{v.totalVoucher}</TableCell>
+                      <TableCell>
+                        {v.totalVoucher}
+                        {v.statusCounts && v.statusCounts.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {v.statusCounts.map((sc) => (
+                              <Badge key={sc.requestStatus} variant={STATUS_COUNT_MAP[sc.requestStatus]?.variant || "secondary"} className="text-xs">
+                                {sc.requestStatus}: {sc.count}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </TableCell>
                       <TableCell>{v.storeName || "—"}</TableCell>
                       <TableCell>{v.createdBy}</TableCell>
                       <TableCell className="text-sm">{formatDateTime(v.createdTime)}</TableCell>
                       <TableCell>{v.confirmedBy || "—"}</TableCell>
-                      <TableCell className="text-right space-x-1">
-                        {(v.status === "INIT" || v.status === "DRAFT") && (
+                      <TableCell className="text-right space-x-1" onClick={(e) => e.stopPropagation()}>
+                        {(v.status === "INIT" || v.status === "DRAFT") && v.voucherPurpose !== "REWARD" && (
                           <>
                             <Button variant="ghost" size="icon" onClick={() => openAction(v, "submit")} title="Gửi duyệt">
                               <Send className="h-4 w-4" />
@@ -485,7 +541,7 @@ export default function VouchersPage() {
                             </Button>
                           </>
                         )}
-                        {v.status === "PENDING_APPROVE" && (
+                        {v.status === "PENDING_APPROVE" && !isPartner && v.voucherPurpose !== "REWARD" && (
                           <>
                             <Button variant="ghost" size="icon" onClick={() => openAction(v, "approve")} title="Duyệt">
                               <CheckCircle className="h-4 w-4 text-green-600" />
@@ -513,12 +569,12 @@ export default function VouchersPage() {
               <SelectFilter label="Loại giảm" value={detFilters.discountType} onChange={(v) => setDetFilters((p) => ({ ...p, discountType: v }))} options={DISCOUNT_TYPE_OPTIONS} />
               <SelectFilter label="Trạng thái" value={detFilters.voucherStatus} onChange={(v) => setDetFilters((p) => ({ ...p, voucherStatus: v }))} options={DETAIL_STATUS_OPTIONS} />
               <SelectFilter label="Hạng KH" value={detFilters.customerTier} onChange={(v) => setDetFilters((p) => ({ ...p, customerTier: v }))} options={CUSTOMER_TIER_OPTIONS} />
-              <SelectFilter label="Nguồn" value={detFilters.creatorType} onChange={(v) => setDetFilters((p) => ({ ...p, creatorType: v }))} options={CREATOR_TYPE_OPTIONS} />
-              <SelectFilter label="Mục đích" value={detFilters.voucherPurpose} onChange={(v) => setDetFilters((p) => ({ ...p, voucherPurpose: v }))} options={VOUCHER_PURPOSE_OPTIONS} />
-              <div className="grid gap-1">
+              {!isPartner && <SelectFilter label="Nguồn" value={detFilters.creatorType} onChange={(v) => setDetFilters((p) => ({ ...p, creatorType: v }))} options={CREATOR_TYPE_OPTIONS} />}
+              {!isPartner && <SelectFilter label="Mục đích" value={detFilters.voucherPurpose} onChange={(v) => setDetFilters((p) => ({ ...p, voucherPurpose: v }))} options={VOUCHER_PURPOSE_OPTIONS} />}
+              {!isPartner && <div className="grid gap-1">
                 <Label className="text-xs text-muted-foreground">Cửa hàng</Label>
                 <Input className="w-40" placeholder="Tên cửa hàng" value={detFilters.storeName} onChange={(e) => setDetFilters((p) => ({ ...p, storeName: e.target.value }))} />
-              </div>
+              </div>}
               <div className="grid gap-1">
                 <Label className="text-xs text-muted-foreground">Từ ngày</Label>
                 <Input type="date" className="w-40" value={detFilters.fromDate} onChange={(e) => setDetFilters((p) => ({ ...p, fromDate: e.target.value }))} />
@@ -563,7 +619,7 @@ export default function VouchersPage() {
                   </TableRow>
                 ) : (
                   details.map((d) => (
-                    <TableRow key={d.id}>
+                    <TableRow key={d.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleViewVoucherDetail(d)}>
                       <TableCell className="font-mono text-sm">{d.voucherCode}</TableCell>
                       <TableCell>{d.voucherName}</TableCell>
                       <TableCell>
@@ -615,28 +671,6 @@ export default function VouchersPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
-                    <Label>Mục đích *</Label>
-                    <Select value={form.voucherPurpose} onValueChange={(v) => setForm((p) => ({ ...p, voucherPurpose: v }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="REWARD">Reward</SelectItem>
-                        <SelectItem value="HUNT">Hunt</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>Hạng khách hàng</Label>
-                    <Select value={form.customerTier} onValueChange={(v) => setForm((p) => ({ ...p, customerTier: v }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {CUSTOMER_TIERS_FORM.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
                     <Label>Loại giảm giá *</Label>
                     <Select value={form.discountType} onValueChange={(v) => setForm((p) => ({ ...p, discountType: v }))}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
@@ -646,6 +680,19 @@ export default function VouchersPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                  {!isPartner && (
+                    <div className="grid gap-2">
+                      <Label>Hạng khách hàng</Label>
+                      <Select value={form.customerTier} onValueChange={(v) => setForm((p) => ({ ...p, customerTier: v }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {CUSTOMER_TIERS_FORM.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label>{form.discountType === "FIXED" ? "Số tiền giảm (VNĐ) *" : "Phần trăm giảm (%) *"}</Label>
                     <Input type="number" value={form.discountValue} onChange={(e) => setForm((p) => ({ ...p, discountValue: e.target.value }))} />
@@ -809,6 +856,89 @@ export default function VouchersPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Request Detail Dialog */}
+        <Dialog open={reqDetailOpen} onOpenChange={setReqDetailOpen}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Chi tiết Voucher Request</DialogTitle>
+              <DialogDescription>Thông tin request và danh sách voucher</DialogDescription>
+            </DialogHeader>
+            {reqDetailData && (
+              <div className="space-y-4 py-2">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                  <div><Label className="text-xs text-muted-foreground">Request ID</Label><p className="text-sm font-mono">{String(reqDetailData.requestId || "—")}</p></div>
+                  <div><Label className="text-xs text-muted-foreground">Loại</Label><p className="text-sm"><Badge variant="outline">{reqDetailData.requestMode === "SINGLE" ? "Đơn lẻ" : "Excel"}</Badge></p></div>
+                  <div><Label className="text-xs text-muted-foreground">Nguồn</Label><p className="text-sm">{reqDetailData.creatorType === "SYSTEM" ? "Hệ thống" : "Đối tác"}</p></div>
+                  <div><Label className="text-xs text-muted-foreground">Trạng thái</Label><p className="text-sm"><Badge variant={STATUS_MAP[String(reqDetailData.status)]?.variant || "secondary"}>{STATUS_MAP[String(reqDetailData.status)]?.label || String(reqDetailData.status)}</Badge></p></div>
+                  <div><Label className="text-xs text-muted-foreground">Cửa hàng</Label><p className="text-sm">{String(reqDetailData.storeName || "—")}</p></div>
+                  <div><Label className="text-xs text-muted-foreground">Tổng voucher</Label><p className="text-sm">{String(reqDetailData.totalVoucher || 0)}</p></div>
+                  <div><Label className="text-xs text-muted-foreground">Người tạo</Label><p className="text-sm">{String(reqDetailData.createdBy || "—")}</p></div>
+                  <div><Label className="text-xs text-muted-foreground">Ngày tạo</Label><p className="text-sm">{reqDetailData.createdTime ? formatDateTime(String(reqDetailData.createdTime)) : "—"}</p></div>
+                  <div><Label className="text-xs text-muted-foreground">Người duyệt</Label><p className="text-sm">{String(reqDetailData.confirmedBy || "—")}</p></div>
+                  <div><Label className="text-xs text-muted-foreground">Ngày duyệt</Label><p className="text-sm">{reqDetailData.confirmedTime ? formatDateTime(String(reqDetailData.confirmedTime)) : "—"}</p></div>
+                  {reqDetailData.reason ? <div className="col-span-2"><Label className="text-xs text-muted-foreground">Lý do</Label><p className="text-sm text-destructive">{String(reqDetailData.reason)}</p></div> : null}
+                </div>
+
+                <div className="border-t pt-4">
+                  <Label className="text-base font-semibold">Danh sách Voucher</Label>
+                  {reqDetailLoading ? (
+                    <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin" /></div>
+                  ) : reqDetailVouchers.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-4">Chưa có voucher detail</p>
+                  ) : (
+                    <Table>
+                      <TableHeader><TableRow>
+                        <TableHead>Mã voucher</TableHead><TableHead>Tên</TableHead><TableHead>Loại giảm</TableHead><TableHead>Giá trị</TableHead><TableHead>Tồn kho</TableHead><TableHead>Trạng thái</TableHead>
+                      </TableRow></TableHeader>
+                      <TableBody>
+                        {reqDetailVouchers.map((rv) => (
+                          <TableRow key={rv.id}>
+                            <TableCell className="font-mono text-sm">{rv.voucherCode}</TableCell>
+                            <TableCell>{rv.voucherName}</TableCell>
+                            <TableCell><Badge variant="outline">{rv.discountType === "FIXED" ? "Cố định" : "Phần trăm"}</Badge></TableCell>
+                            <TableCell>{formatDiscountValue(rv.discountType, rv.discountValue)}</TableCell>
+                            <TableCell>{rv.availableStock}/{rv.totalStock}</TableCell>
+                            <TableCell><Badge variant={VOUCHER_STATUS_MAP[rv.status]?.variant || "secondary"}>{VOUCHER_STATUS_MAP[rv.status]?.label || rv.status}</Badge></TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Voucher Detail Dialog */}
+        <Dialog open={voucherDetailOpen} onOpenChange={setVoucherDetailOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Chi tiết Voucher</DialogTitle>
+              <DialogDescription>{selectedVoucherDetail?.voucherCode}</DialogDescription>
+            </DialogHeader>
+            {selectedVoucherDetail && (
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3 py-2">
+                <div><Label className="text-xs text-muted-foreground">Mã voucher</Label><p className="text-sm font-mono">{selectedVoucherDetail.voucherCode}</p></div>
+                <div><Label className="text-xs text-muted-foreground">Request ID</Label><p className="text-sm font-mono">{selectedVoucherDetail.requestId}</p></div>
+                <div className="col-span-2"><Label className="text-xs text-muted-foreground">Tên voucher</Label><p className="text-sm font-medium">{selectedVoucherDetail.voucherName}</p></div>
+                <div className="col-span-2"><Label className="text-xs text-muted-foreground">Mô tả</Label><p className="text-sm">{selectedVoucherDetail.description}</p></div>
+                <div><Label className="text-xs text-muted-foreground">Loại giảm</Label><p className="text-sm"><Badge variant="outline">{selectedVoucherDetail.discountType === "FIXED" ? "Cố định" : "Phần trăm"}</Badge></p></div>
+                <div><Label className="text-xs text-muted-foreground">Giá trị</Label><p className="text-sm">{formatDiscountValue(selectedVoucherDetail.discountType, selectedVoucherDetail.discountValue)}</p></div>
+                {selectedVoucherDetail.maxDiscount != null && <div><Label className="text-xs text-muted-foreground">Giảm tối đa</Label><p className="text-sm">{new Intl.NumberFormat("vi-VN").format(selectedVoucherDetail.maxDiscount)}đ</p></div>}
+                {selectedVoucherDetail.minOrderValue != null && <div><Label className="text-xs text-muted-foreground">Đơn tối thiểu</Label><p className="text-sm">{new Intl.NumberFormat("vi-VN").format(selectedVoucherDetail.minOrderValue)}đ</p></div>}
+                <div><Label className="text-xs text-muted-foreground">Hạng KH</Label><p className="text-sm">{selectedVoucherDetail.customerTier}</p></div>
+                <div><Label className="text-xs text-muted-foreground">Giới hạn thu thập</Label><p className="text-sm">{selectedVoucherDetail.maxCollect}</p></div>
+                <div><Label className="text-xs text-muted-foreground">Tồn kho</Label><p className="text-sm">{selectedVoucherDetail.availableStock}/{selectedVoucherDetail.totalStock}</p></div>
+                <div><Label className="text-xs text-muted-foreground">Trạng thái</Label><p className="text-sm"><Badge variant={VOUCHER_STATUS_MAP[selectedVoucherDetail.status]?.variant || "secondary"}>{VOUCHER_STATUS_MAP[selectedVoucherDetail.status]?.label || selectedVoucherDetail.status}</Badge></p></div>
+                <div><Label className="text-xs text-muted-foreground">Bắt đầu</Label><p className="text-sm">{formatDateTime(selectedVoucherDetail.startDate)}</p></div>
+                <div><Label className="text-xs text-muted-foreground">Kết thúc</Label><p className="text-sm">{formatDateTime(selectedVoucherDetail.endDate)}</p></div>
+                {selectedVoucherDetail.errorMessage && <div className="col-span-2"><Label className="text-xs text-muted-foreground">Lỗi</Label><p className="text-sm text-destructive">{selectedVoucherDetail.errorMessage}</p></div>}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </AuthGuard>
   );

@@ -22,6 +22,12 @@ export const AUDIT_LOG_ENDPOINTS = {
   LIST: "/api/v1/audit-logs",
 };
 
+export const INVOICE_ENDPOINTS = {
+  LIST: "/api/invoices",
+  CREATE: "/api/invoices",
+  DETAIL: (id: string) => `/api/invoices/${id}`,
+};
+
 export const CAMPAIGN_ENDPOINTS = {
   LIST: "/api/v1/campaigns",
   CREATE: "/api/v1/campaigns",
