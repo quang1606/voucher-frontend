@@ -45,8 +45,9 @@ export const REPORT_ENDPOINTS = {
 };
 
 export const DASHBOARD_ENDPOINTS = {
-  STATS: "/api/v1/dashboard/stats",
-  ACTIVITIES: "/api/v1/dashboard/activities",
+  VOUCHER_MONTHLY: "/api/dashboard/voucher-monthly-stats",
+  VOUCHER_REQUEST: "/api/dashboard/voucher-request-stats",
+  MISSION: "/api/dashboard/mission-stats",
 };
 
 // Identity Service endpoints

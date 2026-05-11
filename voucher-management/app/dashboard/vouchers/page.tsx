@@ -313,8 +313,8 @@ export default function VouchersPage() {
         discountValue: Number(form.discountValue),
         totalStock: Number(form.totalStock),
         maxCollect: form.maxCollect ? Number(form.maxCollect) : null,
-        startDate: form.startDate,
-        endDate: form.endDate,
+        startDate: form.startDate ? `${form.startDate}T00:00:00` : "",
+        endDate: form.endDate ? `${form.endDate}T23:59:59` : "",
       };
       if (form.discountType === "FIXED") {
         body.minOrderValue = Number(form.minOrderValue);
@@ -725,11 +725,11 @@ export default function VouchersPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label>Ngày bắt đầu *</Label>
-                    <Input type="datetime-local" value={form.startDate} onChange={(e) => setForm((p) => ({ ...p, startDate: e.target.value }))} />
+                    <Input type="date" value={form.startDate} onChange={(e) => setForm((p) => ({ ...p, startDate: e.target.value }))} />
                   </div>
                   <div className="grid gap-2">
                     <Label>Ngày kết thúc *</Label>
-                    <Input type="datetime-local" value={form.endDate} onChange={(e) => setForm((p) => ({ ...p, endDate: e.target.value }))} />
+                    <Input type="date" value={form.endDate} onChange={(e) => setForm((p) => ({ ...p, endDate: e.target.value }))} />
                   </div>
                 </div>
                 <DialogFooter>

@@ -1,12 +1,16 @@
 import axiosInstance from "@/lib/api/axios";
 
 export const dashboardService = {
-  async getStats() {
-    const res = await axiosInstance.get("/api/dashboard/stats");
+  async getVoucherMonthlyStats(year: number) {
+    const res = await axiosInstance.get("/api/dashboard/voucher-monthly-stats", { params: { year } });
     return res.data;
   },
-  async getActivities() {
-    const res = await axiosInstance.get("/api/dashboard/activities");
+  async getVoucherRequestStats() {
+    const res = await axiosInstance.get("/api/dashboard/voucher-request-stats");
+    return res.data;
+  },
+  async getMissionStats() {
+    const res = await axiosInstance.get("/api/dashboard/mission-stats");
     return res.data;
   },
 };

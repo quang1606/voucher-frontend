@@ -214,8 +214,8 @@ export default function MissionsPage() {
         targetValue: Number(form.targetValue),
         rewardType: form.rewardType,
         rewardValue: form.rewardValue || null,
-        missionStartDate: form.missionStartDate,
-        missionEndDate: form.missionEndDate,
+        missionStartDate: form.missionStartDate ? `${form.missionStartDate}T00:00:00` : "",
+        missionEndDate: form.missionEndDate ? `${form.missionEndDate}T23:59:59` : "",
         // Voucher fields (BE: CreateVoucherRequest)
         voucherName: form.voucherName || form.missionName,
         description: form.voucherDescription || form.missionDescription,
@@ -225,8 +225,8 @@ export default function MissionsPage() {
         minOrderValue: form.minOrderValue ? Number(form.minOrderValue) : null,
         totalStock: form.totalStock ? Number(form.totalStock) : null,
         maxCollect: form.maxCollect ? Number(form.maxCollect) : 1,
-        startDate: form.voucherStartDate || form.missionStartDate,
-        endDate: form.voucherEndDate || form.missionEndDate,
+        startDate: form.voucherStartDate ? `${form.voucherStartDate}T00:00:00` : form.missionStartDate ? `${form.missionStartDate}T00:00:00` : "",
+        endDate: form.voucherEndDate ? `${form.voucherEndDate}T23:59:59` : form.missionEndDate ? `${form.missionEndDate}T23:59:59` : "",
       };
       await missionService.create(body);
       toast({ title: "Thành công", description: "Đã tạo mission" });
@@ -509,7 +509,7 @@ export default function MissionsPage() {
                 <div className="grid gap-2">
                   <Label>Ngày bắt đầu *</Label>
                   <Input
-                    type="datetime-local"
+                    type="date"
                     value={form.missionStartDate}
                     onChange={(e) => setForm((p) => ({ ...p, missionStartDate: e.target.value }))}
                   />
@@ -517,7 +517,7 @@ export default function MissionsPage() {
                 <div className="grid gap-2">
                   <Label>Ngày kết thúc *</Label>
                   <Input
-                    type="datetime-local"
+                    type="date"
                     value={form.missionEndDate}
                     onChange={(e) => setForm((p) => ({ ...p, missionEndDate: e.target.value }))}
                   />
@@ -600,7 +600,7 @@ export default function MissionsPage() {
                     <div className="grid gap-2">
                       <Label>Voucher bắt đầu *</Label>
                       <Input
-                        type="datetime-local"
+                        type="date"
                         value={form.voucherStartDate}
                         onChange={(e) => setForm((p) => ({ ...p, voucherStartDate: e.target.value }))}
                       />
@@ -608,7 +608,7 @@ export default function MissionsPage() {
                     <div className="grid gap-2">
                       <Label>Voucher kết thúc *</Label>
                       <Input
-                        type="datetime-local"
+                        type="date"
                         value={form.voucherEndDate}
                         onChange={(e) => setForm((p) => ({ ...p, voucherEndDate: e.target.value }))}
                       />
