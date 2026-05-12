@@ -760,7 +760,7 @@ export default function VouchersPage() {
                   <CardContent className="pt-4 space-y-3">
                     <p className="text-sm text-muted-foreground">Tải file mẫu tương ứng với loại giảm giá đã chọn:</p>
                     <div className="flex gap-2">
-                      <a href={`/api/vouchers/template?type=${excelDiscountType}`} download>
+                      <a href={`/api/vouchers/template?type=${excelDiscountType}${isPartner ? "&role=PARTNER" : ""}`} download>
                         <Button variant="outline" size="sm">
                           <Download className="mr-2 h-4 w-4" />
                           Tải template {excelDiscountType} (.xlsx)

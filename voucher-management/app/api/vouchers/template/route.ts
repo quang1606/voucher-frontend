@@ -1,8 +1,8 @@
 import ExcelJS from "exceljs";
 
 const COLUMNS = [
-  { header: "Voucher Name", key: "voucherName", width: 25 },
-  { header: "Description", key: "description", width: 40 },
+  { header: "Voucher Name", key: "voucherName", width: 30 },
+  { header: "Description", key: "description", width: 45 },
   { header: "Customer Tier", key: "customerTier", width: 15 },
   { header: "Voucher Purpose", key: "voucherPurpose", width: 18 },
   { header: "Discount Type", key: "discountType", width: 15 },
@@ -15,19 +15,62 @@ const COLUMNS = [
   { header: "End Date", key: "endDate", width: 22 },
 ];
 
+const TIERS = ["ALL", "SILVER", "GOLD", "PLATINUM", "DIAMOND"];
+const PURPOSES = ["HUNT"];
+
+function randomEndDate(): string {
+  const day = 13 + Math.floor(Math.random() * 5) + 1; // 14-18
+  return `2026-05-${day < 10 ? "0" + day : day} 23:59:59`;
+}
+
 export async function GET(req: Request) {
   const type = new URL(req.url).searchParams.get("type") || "FIXED";
+  const role = new URL(req.url).searchParams.get("role") || "";
+  const isPartner = role === "PARTNER";
 
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Vouchers");
   sheet.columns = COLUMNS;
 
-  if (type === "FIXED") {
-    sheet.addRow({ voucherName: "Giam 50K don 200K", description: "Voucher giam 50K cho don tu 200K", customerTier: "ALL", voucherPurpose: "HUNT", discountType: "FIXED", discountValue: 50000, maxDiscount: "", minOrderValue: 200000, totalStock: 1000, maxCollect: 1, startDate: "2025-07-01 00:00:00", endDate: "2025-07-31 23:59:59" });
-    sheet.addRow({ voucherName: "Giam 100K don 500K", description: "Voucher giam 100K cho don tu 500K", customerTier: "GOLD", voucherPurpose: "REWARD", discountType: "FIXED", discountValue: 100000, maxDiscount: "", minOrderValue: 500000, totalStock: 500, maxCollect: 2, startDate: "2025-07-01 00:00:00", endDate: "2025-07-31 23:59:59" });
-  } else {
-    sheet.addRow({ voucherName: "Giam 20% toi da 100K", description: "Voucher giam 20% toi da 100K", customerTier: "ALL", voucherPurpose: "HUNT", discountType: "PERCENT", discountValue: 20, maxDiscount: 100000, minOrderValue: "", totalStock: 1000, maxCollect: 1, startDate: "2025-07-01 00:00:00", endDate: "2025-07-31 23:59:59" });
-    sheet.addRow({ voucherName: "Giam 50% toi da 200K", description: "Voucher giam 50% cho khach VIP", customerTier: "PLATINUM", voucherPurpose: "REWARD", discountType: "PERCENT", discountValue: 50, maxDiscount: 200000, minOrderValue: "", totalStock: 200, maxCollect: 1, startDate: "2025-07-01 00:00:00", endDate: "2025-07-31 23:59:59" });
+  for (let i = 1; i <= 30; i++) {
+    const tier = TIERS[Math.floor(Math.random() * TIERS.length)];
+    const purpose = PURPOSES[Math.floor(Math.random() * PURPOSES.length)];
+
+    if (type === "FIXED") {
+      const discountValue = [10000, 20000, 30000, 50000, 100000][Math.floor(Math.random() * 5)];
+      const minOrder = discountValue * (2 + Math.floor(Math.random() * 3));
+      sheet.addRow({
+        voucherName: `Giam ${discountValue / 1000}K don ${minOrder / 1000}K - ${i}`,
+        description: `Voucher giam ${discountValue / 1000}K cho don tu ${minOrder / 1000}K`,
+        customerTier: isPartner ? "" : tier,
+        voucherPurpose: purpose,
+        discountType: "FIXED",
+        discountValue,
+        maxDiscount: "",
+        minOrderValue: minOrder,
+        totalStock: 50 + Math.floor(Math.random() * 950),
+        maxCollect: Math.floor(Math.random() * 3) + 1,
+        startDate: "2026-05-13 00:00:00",
+        endDate: randomEndDate(),
+      });
+    } else {
+      const discountValue = [5, 10, 15, 20, 30, 50][Math.floor(Math.random() * 6)];
+      const maxDiscount = [50000, 100000, 150000, 200000, 500000][Math.floor(Math.random() * 5)];
+      sheet.addRow({
+        voucherName: `Giam ${discountValue}% toi da ${maxDiscount / 1000}K - ${i}`,
+        description: `Voucher giam ${discountValue}% toi da ${maxDiscount / 1000}K`,
+        customerTier: isPartner ? "" : tier,
+        voucherPurpose: purpose,
+        discountType: "PERCENT",
+        discountValue,
+        maxDiscount,
+        minOrderValue: "",
+        totalStock: 50 + Math.floor(Math.random() * 950),
+        maxCollect: Math.floor(Math.random() * 3) + 1,
+        startDate: "2026-05-13 00:00:00",
+        endDate: randomEndDate(),
+      });
+    }
   }
 
   sheet.getRow(1).font = { bold: true };

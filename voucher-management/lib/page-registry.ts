@@ -11,7 +11,6 @@ export const PAGE_REGISTRY: PageRegistryItem[] = [
   { key: "partners", label: "Partners", description: "Quản lý đối tác" },
   { key: "audit-logs", label: "Audit Logs", description: "Lịch sử hoạt động" },
   { key: "invoices", label: "Invoices", description: "Quản lý hóa đơn giả lập" },
-  { key: "reports", label: "Reports", description: "Báo cáo thống kê" },
   { key: "settings", label: "Settings", description: "Cài đặt hệ thống" },
 ];
 
